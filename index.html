@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thomas Le Bourdon · Plongée</title>
+  <meta name="description" content="Portfolio de Thomas Le Bourdon : une plongée interactive à la découverte de son parcours, de ses projets et de son cap vers la robotique, l'IoT et l'IA embarquée.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body data-bottom="4500">
+  <canvas id="ocean" aria-hidden="true"></canvas>
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="fx" aria-hidden="true"></div>
+  <div id="tip" aria-hidden="true"></div>
+
+  <!-- Jauge de profondeur (à la neal.fun/deep-sea) -->
+  <div class="gauge" aria-hidden="true"><div class="gauge-fill"></div></div>
+  <aside class="meter" aria-live="off">
+    <div class="meter-val">0 m</div>
+    <div class="meter-zone">Surface</div>
+  </aside>
+  <button class="reading-toggle" type="button" aria-pressed="false">Mode lecture</button>
+
+  <!-- Fiche ouverte quand on explore une station -->
+  <div id="panel" class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title" hidden>
+    <div class="panel-head">
+      <p class="panel-depth depth-tag"></p>
+      <h2 id="panel-title"></h2>
+      <button class="panel-close" type="button" aria-label="Fermer et remonter">✕</button>
+    </div>
+    <div class="panel-body"></div>
+    <button class="panel-back" type="button">↑ Reprendre la descente</button>
+  </div>
+
+  <!-- ═══════════════ SURFACE ═══════════════ -->
+  <header class="hero" data-depth="0">
+    <div class="sky">
+      <div class="sun"></div>
+      <div class="cloud c1"></div>
+      <div class="cloud c2"></div>
+      <div class="gull g1"></div>
+      <div class="gull g2"></div>
+    </div>
+
+    <div class="hero-text">
+      <p class="kicker">Portfolio · plongée interactive</p>
+      <h1>Thomas<br>Le Bourdon</h1>
+      <p class="hero-sub">Étudiant en informatique, je me prépare à concevoir des robots et des objets connectés qui réfléchissent par eux-mêmes.</p>
+    </div>
+
+    <svg class="boat" viewBox="0 0 220 160" aria-hidden="true">
+      <line x1="150" y1="40" x2="214" y2="2" stroke="#3b2a1a" stroke-width="3" stroke-linecap="round"/>
+      <path d="M214 2 Q216 80 206 158" stroke="rgba(30,30,30,.55)" stroke-width="1" fill="none"/>
+      <rect x="70" y="58" width="60" height="38" rx="4" fill="#f4f1ea"/>
+      <rect x="80" y="66" width="16" height="14" rx="2" fill="#7cc6ef"/>
+      <rect x="104" y="66" width="16" height="14" rx="2" fill="#7cc6ef"/>
+      <rect x="92" y="40" width="6" height="20" fill="#c0392b"/>
+      <path d="M20 96 H200 L182 130 Q110 140 40 130 Z" fill="#c0392b"/>
+      <path d="M28 108 H192" stroke="#f4f1ea" stroke-width="4"/>
+    </svg>
+
+    <div class="waves" aria-hidden="true">
+      <svg class="wave w1" viewBox="0 0 1440 80" preserveAspectRatio="none"><path d="M0 40 Q180 0 360 40 T720 40 T1080 40 T1440 40 V80 H0 Z"/></svg>
+      <svg class="wave w2" viewBox="0 0 1440 80" preserveAspectRatio="none"><path d="M0 40 Q180 0 360 40 T720 40 T1080 40 T1440 40 V80 H0 Z"/></svg>
+    </div>
+
+    <div class="underwater">
+      <div class="rays" aria-hidden="true"></div>
+      <a class="dive" href="#about">Plonger <span>↓</span></a>
+      <p class="hint">Descends, puis clique sur les balises lumineuses pour explorer chaque zone avec le robot</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- ═══════════════ QUI SUIS-JE ═══════════════ -->
+    <section id="about" data-depth="40" data-event="school" data-station="bottle">
+      <div class="wrap">
+        <p class="depth-tag reveal">40 m</p>
+        <h2 class="reveal">Qui est à bord ?</h2>
+        <p class="teaser reveal">Une bouteille repose sur le récif. Elle contient quelques mots sur moi.</p>
+        <button class="explore reveal" type="button">Explorer la zone <span aria-hidden="true">→</span></button>
+        <div class="details">
+          <p class="lead">J'ai 21 ans, je suis breton, et je suis en BUT Informatique à l'IUT de Lannion, parcours données.</p>
+          <p>Ce qui me fait avancer, c'est la curiosité. J'aime comprendre comment les choses fonctionnent, puis les faire fonctionner moi-même&nbsp;: un tapis de marche qui parle à un live Twitch, un modèle qui repère des signes de dépression, des agents IA qui tournent sur ma propre carte graphique.</p>
+          <p>La patience, je l'ai apprise à la pêche et en cuisine. Elle me sert tous les jours devant un bug.</p>
+          <ul class="facts" data-puff>
+            <li><span>Base</span>Lannion, Bretagne</li>
+            <li><span>Formation</span>BUT Informatique</li>
+            <li><span>Cap</span>Robotique · IoT · IA</li>
+            <li><span>Langues</span>Français, anglais courant</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="zone-mark" data-depth="200"><span>200 m</span><em>Zone crépusculaire : la lumière du soleil s'arrête ici</em></div>
+
+    <!-- ═══════════════ MON CAP ═══════════════ -->
+    <section id="cap" data-depth="300" data-event="whale" data-station="helm">
+      <div class="wrap">
+        <p class="depth-tag reveal">300 m</p>
+        <h2 class="reveal">Mon cap</h2>
+        <p class="teaser reveal">Une vieille barre de navire, prise dans la roche. Elle indique où je vais.</p>
+        <button class="explore reveal" type="button">Explorer la zone <span aria-hidden="true">→</span></button>
+        <div class="details">
+          <p class="lead">Je cherche une <strong>école d'ingénieur ou un master</strong> en robotique, IoT et systèmes embarqués, avec une forte composante <strong>intelligence artificielle</strong>.</p>
+          <div class="pillars">
+            <article class="card">
+              <h3>Robotique</h3>
+              <p>Des machines qui perçoivent, décident et agissent dans le monde réel.</p>
+            </article>
+            <article class="card">
+              <h3>IoT</h3>
+              <p>Des capteurs et des objets qui communiquent. J'ai commencé par le Bluetooth Low Energy.</p>
+            </article>
+            <article class="card">
+              <h3>Systèmes embarqués</h3>
+              <p>Du code au plus près du matériel, sous contrainte d'énergie et de mémoire. Mon bac STI2D m'y a préparé.</p>
+            </article>
+            <article class="card">
+              <h3>IA embarquée</h3>
+              <p>Faire tourner des modèles sur du matériel limité. Je le pratique déjà avec des LLM en local.</p>
+            </article>
+          </div>
+          <ol class="route">
+            <li><b>Aujourd'hui</b>BUT Informatique, IUT de Lannion</li>
+            <li><b>Ensuite</b>École d'ingénieur ou master : robotique, IoT, embarqué + IA</li>
+            <li><b>Et peut-être</b>Un doctorat, si un sujet de thèse me passionne</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ PARCOURS ═══════════════ -->
+    <section id="parcours" data-depth="650" data-event="manta" data-station="anchor">
+      <div class="wrap">
+        <p class="depth-tag reveal">650 m</p>
+        <h2 class="reveal">Parcours</h2>
+        <p class="teaser reveal">Une ancre et sa chaîne : chaque maillon est une étape.</p>
+        <button class="explore reveal" type="button">Explorer la zone <span aria-hidden="true">→</span></button>
+        <div class="details">
+          <ol class="timeline">
+            <li>
+              <time>2023 → aujourd'hui</time>
+              <h3>BUT Informatique</h3>
+              <p class="where">IUT de Lannion · Université de Rennes</p>
+              <p>Parcours Administration, gestion et exploitation des données. Une formation à 50&nbsp;% en travaux pratiques, rythmée par des projets d'équipe (SAÉ).</p>
+            </li>
+            <li>
+              <time>Avril → juin 2026</time>
+              <h3>Stage en informatique</h3>
+              <p class="where">INRAE · Rennes</p>
+              <p>Au sein d'une équipe de recherche : mise en place d'un serveur PACS pour l'imagerie médicale au format DICOM, et d'une architecture complète adaptée aux besoins des chercheurs. Système, réseau, Python et Bash.</p>
+            </li>
+            <li>
+              <time>2023</time>
+              <h3>Baccalauréat STI2D</h3>
+              <p class="where">Lycée de l'Élorn · Landerneau</p>
+              <p>Sciences et technologies de l'industrie et du développement durable : mes premières bases en électronique, énergie et prototypage.</p>
+            </li>
+            <li>
+              <time>2019</time>
+              <h3>Stage d'observation</h3>
+              <p class="where">Froneri · Plouédern</p>
+              <p>Support informatique : mise en place et branchement de postes de travail.</p>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <div class="zone-mark" data-depth="1000"><span>1 000 m</span><em>Zone de minuit : la seule lumière est celle qu'on produit</em></div>
+
+    <!-- ═══════════════ PROJETS ═══════════════ -->
+    <section id="projets" data-depth="1300" data-event="jelly" data-station="chest">
+      <div class="wrap">
+        <p class="depth-tag reveal">1 300 m</p>
+        <h2 class="reveal">Projets</h2>
+        <p class="teaser reveal">Un coffre au fond de l'eau. Dedans, ce que j'ai construit.</p>
+        <button class="explore reveal" type="button">Explorer la zone <span aria-hidden="true">→</span></button>
+        <div class="details">
+          <p class="lead">Dans le noir, les créatures fabriquent leur propre lumière. Voici ce que j'ai construit.</p>
+          <div class="projects">
+            <article class="project card featured">
+              <p class="cat">IoT · projet perso</p>
+              <h3>Tapis connecté × Stream</h3>
+              <p>Un pont entre un tapis de marche Sperax et un live Twitch. Connexion Bluetooth Low Energy (protocole FTMS), décodage des trames de vitesse, distance et durée, diffusion en temps réel par WebSocket vers un overlay OBS, et un bot qui répond <code>!stats</code> dans le chat.</p>
+              <ul class="stack"><li>Python</li><li>asyncio</li><li>BLE · bleak</li><li>WebSocket</li><li>OBS</li></ul>
+            </article>
+
+            <article class="project card featured">
+              <p class="cat">IA · SAÉ semestre 5</p>
+              <h3>Benchmark d'agents de code en local</h3>
+              <p>Comparer Codex CLI, OpenCode et Mistral Vibe pilotés par Gemma 4 E4B via Ollama, sur une RTX 5060. Gestion du contexte, appels d'outils, boucle agentique : des dizaines de runs mesurés (tokens, cache, erreurs d'édition) et un rapport sur les forces et les failles de chaque harnais.</p>
+              <p class="stat"><b>3,4 %</b> taux d'échec d'édition le plus bas mesuré, sur 33 runs</p>
+              <ul class="stack"><li>Ollama</li><li>LLM locaux</li><li>Agents</li><li>Node.js</li><li>Mesure</li></ul>
+            </article>
+
+            <article class="project card">
+              <p class="cat">IA · Data</p>
+              <h3>Prédire la dépression chez les étudiants</h3>
+              <p>Données de 2&nbsp;022 étudiants (questionnaires PHQ-9, GAD-7, PSS-10). Nettoyage, feature engineering, prévention des fuites de données, puis régression logistique, Random Forest et XGBoost en validation croisée stratifiée. Le modèle est servi dans une app Streamlit.</p>
+              <ul class="stack"><li>pandas</li><li>scikit-learn</li><li>XGBoost</li><li>Streamlit</li></ul>
+              <a class="link" href="https://github.com/thomaslebourdon/Depression_prediction" target="_blank" rel="noopener">Voir sur GitHub →</a>
+            </article>
+
+            <article class="project card">
+              <p class="cat">Architecture · en cours</p>
+              <h3>Personal OS</h3>
+              <p>Conception d'un système personnel centralisé : projets, objectifs, connaissances, et une mémoire exploitable de mes échanges avec une IA, reliée à l'assistant par un serveur MCP.</p>
+              <ul class="stack"><li>Next.js</li><li>PostgreSQL</li><li>MCP</li><li>TypeScript</li></ul>
+            </article>
+
+            <article class="project card">
+              <p class="cat">Web · équipe de 7</p>
+              <h3>Plateforme d'offres touristiques</h3>
+              <p>Projet mené en Scrum, où j'étais Scrum Master. Script de création et peuplement de la base SQL, pages PHP connectées à la base.</p>
+              <ul class="stack"><li>Scrum</li><li>SQL</li><li>PHP</li><li>Jira</li></ul>
+            </article>
+
+            <article class="project card">
+              <p class="cat">Web · full-stack</p>
+              <h3>Zafferano</h3>
+              <p>Landing page de recettes italiennes avec une vraie newsletter : serveur Express, stockage des inscrits, email de bienvenue via Nodemailer.</p>
+              <ul class="stack"><li>Node.js</li><li>Express</li><li>Nodemailer</li></ul>
+              <a class="link" href="https://github.com/thomaslebourdon/zafferano" target="_blank" rel="noopener">Voir sur GitHub →</a>
+            </article>
+
+            <article class="project card">
+              <p class="cat">Langage C</p>
+              <h3>Sudoku en C</h3>
+              <p>Du pseudo-code à une implémentation documentée, validée par un cahier de tests.</p>
+              <ul class="stack"><li>C</li><li>Tests</li></ul>
+            </article>
+
+            <article class="project card">
+              <p class="cat">Base de données</p>
+              <h3>BDD pour programme scolaire</h3>
+              <p>Analyse du besoin client en UML, scripts de création et de peuplement, requêtes statistiques.</p>
+              <ul class="stack"><li>UML</li><li>SQL</li></ul>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ COMPÉTENCES ═══════════════ -->
+    <section id="competences" data-depth="2200" data-event="sonar" data-station="lab">
+      <div class="wrap">
+        <p class="depth-tag reveal">2 200 m</p>
+        <h2 class="reveal">Compétences</h2>
+        <p class="teaser reveal">Une station de recherche. Son sonar balaie ce que je sais faire.</p>
+        <button class="explore reveal" type="button">Explorer la zone <span aria-hidden="true">→</span></button>
+        <div class="details">
+          <div class="skills">
+            <div class="skill-group">
+              <h3>IA &amp; données</h3>
+              <ul class="chips"><li>Python</li><li>pandas · NumPy</li><li>scikit-learn</li><li>XGBoost</li><li>Jupyter</li><li>Streamlit</li><li>LLM locaux · Ollama</li><li>Évaluation d'agents</li></ul>
+            </div>
+            <div class="skill-group">
+              <h3>IoT &amp; embarqué</h3>
+              <ul class="chips"><li>C</li><li>Bluetooth Low Energy</li><li>WebSocket</li><li>Python asyncio</li><li>Bases électronique (STI2D)</li></ul>
+            </div>
+            <div class="skill-group">
+              <h3>Développement</h3>
+              <ul class="chips"><li>Java</li><li>SQL</li><li>PHP</li><li>JavaScript · Node.js</li><li>HTML · CSS</li><li>Three.js</li></ul>
+            </div>
+            <div class="skill-group">
+              <h3>Outils &amp; méthodes</h3>
+              <ul class="chips"><li>Git</li><li>Docker</li><li>Jira</li><li>Scrum Master</li><li>UML</li></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="zone-mark" data-depth="3000"><span>3 000 m</span><em>Il fait 2 °C, et pourtant la vie continue</em></div>
+
+    <!-- ═══════════════ CENTRES D'INTÉRÊT ═══════════════ -->
+    <section id="interets" data-depth="3300" data-event="hook" data-station="clam">
+      <div class="wrap">
+        <p class="depth-tag reveal">3 300 m</p>
+        <h2 class="reveal">Hors du code</h2>
+        <p class="teaser reveal">Une palourde géante, gardée par une pieuvre : ce qui m'anime hors du code.</p>
+        <button class="explore reveal" type="button">Explorer la zone <span aria-hidden="true">→</span></button>
+        <div class="details">
+          <p class="lead">Ce qui me recharge, et qui m'apprend autre chose.</p>
+          <ul class="interests">
+            <li><b>Pêche</b>L'école de la patience. Et une raison de plus d'aimer l'océan.</li>
+            <li><b>Cuisine</b>Suivre une recette, puis l'adapter : comme du code.</li>
+            <li><b>Musique &amp; cinéma</b>Pour l'ambiance pendant les longues sessions.</li>
+            <li><b>Jeux vidéo</b>Ce qui m'a donné envie de comprendre ce qu'il y a sous le capot.</li>
+          </ul>
+          <div class="traits">
+            <span>Curiosité</span><span>Patience</span><span>Esprit d'équipe</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="zone-mark" data-depth="4000"><span>4 000 m</span><em>Zone abyssale</em></div>
+
+    <!-- ═══════════════ CONTACT ═══════════════ -->
+    <section id="contact" data-depth="4300">
+      <div class="wrap">
+        <p class="depth-tag reveal">4 300 m</p>
+        <h2 class="reveal">Tu m'as trouvé.</h2>
+        <p class="lead reveal">Écoles, laboratoires, entreprises : si mon profil vous parle, écrivez-moi.</p>
+        <ul class="links">
+          <li class="reveal" data-puff><a href="mailto:thomas.lebourdon12@gmail.com"><span>Email</span>thomas.lebourdon12@gmail.com</a></li>
+          <li class="reveal" data-puff><a href="https://www.linkedin.com/in/thomas-le-bourdon2935/" target="_blank" rel="noopener"><span>LinkedIn</span>thomas-le-bourdon2935</a></li>
+          <li class="reveal" data-puff><a href="https://github.com/Lydrownn" target="_blank" rel="noopener"><span>GitHub</span>Lydrownn</a></li>
+          <li class="reveal" data-puff><a href="assets/cv/CV_Thomas_Le_Bourdon.pdf" target="_blank" rel="noopener" download="CV_Thomas_Le_Bourdon.pdf"><span>CV</span>Télécharger (PDF)</a></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="seabed">
+    <p>Fond atteint · 4 500 m</p>
+    <button class="surface" type="button">Remonter à la surface ↑</button>
+    <small>© 2026 Thomas Le Bourdon · Inspiré de neal.fun/deep-sea · Modèles 3D : Quaternius (CC0) et contributeurs Poly Pizza (CC-BY), voir assets/models/CREDITS.txt</small>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

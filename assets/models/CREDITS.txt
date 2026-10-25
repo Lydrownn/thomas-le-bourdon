@@ -1,0 +1,23 @@
+clownfish.glb | poly.pizza/m/769fHo3eEB | Quaternius | CC0
+anglerfish.glb | poly.pizza/m/MRjSlwCjHM | Quaternius | CC0
+shark.glb | poly.pizza/m/YYsK3gRCBZ | Quaternius | CC0
+puffer.glb | poly.pizza/m/UKHtgpxTOk | Quaternius | CC0
+butterflyfish.glb | poly.pizza/m/s2MkBeSzGy | Quaternius | CC0
+lionfish.glb | poly.pizza/m/czsz9Baw86 | Quaternius | CC0
+swordfish.glb | poly.pizza/m/7hMOlBjln0 | Quaternius | CC0
+whale.glb | poly.pizza/m/JGFwp6xWgk | Quaternius | CC0
+chest_gold.glb | poly.pizza/m/haqf9qoiOG | Quaternius | CC0
+anchor.glb | poly.pizza/m/ejWQny9Gcz | Quaternius | CC0
+rock2.glb | poly.pizza/m/RtLRqYjfMs | Quaternius | CC0
+rocks3.glb | poly.pizza/m/OQvi8PIZ40 | Quaternius | CC0
+rocks4.glb | poly.pizza/m/Gl3pcrdnpW | Quaternius | CC0
+coral1.glb | poly.pizza/m/7Cs3rTEcpcD | Kelli Ray | CC-BY-3.0
+coral2.glb | poly.pizza/m/0CrDBiCnI5e | God Appeasers | CC-BY-3.0
+coral_orange.glb | poly.pizza/m/3HEc6LvqCJd | Device Lab | CC-BY-3.0
+coral3.glb | poly.pizza/m/4KUXdtDdgHR | Poly by Google | CC-BY-3.0
+seaweed.glb | poly.pizza/m/f_gXhnf06Oc | Laney XR Labs | CC-BY-3.0
+kelp1.glb | poly.pizza/m/4cFllH6Iazk | Poly by Google | CC-BY-3.0
+kelp2.glb | poly.pizza/m/3VhttTFyADO | Christopher F | CC-BY-3.0
+crab.glb | poly.pizza/m/1O5Q4pE8X6e | Poly by Google | CC-BY-3.0
+urchin.glb | poly.pizza/m/f4iwEhEP3-d | Poly by Google | CC-BY-3.0
+octopus.glb | poly.pizza/m/9-b6-yqrwEe | Poly by Google | CC-BY-3.0
