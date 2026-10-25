@@ -2,6 +2,8 @@
 
 Portfolio en « plongée » inspiré de [neal.fun/deep-sea](https://neal.fun/deep-sea/) : on descend de la surface aux abysses. À chaque palier, un promontoire rocheux (coraux, algues, faune) porte un objet lumineux. Un clic dessus fait zoomer la caméra, le robot sous-marin vient l'éclairer et la fiche de la section s'ouvre.
 
+**En ligne :** <https://lydrownn.github.io/thomas-le-bourdon/> (GitHub Pages, branche `main`). Chaque `git push` sur `main` redéploie le site en une minute environ.
+
 ## Lancer en local
 
 ```bash
