@@ -23,3 +23,6 @@ urchin.glb | poly.pizza/m/f4iwEhEP3-d | Poly by Google | CC-BY-3.0
 octopus.glb | poly.pizza/m/9-b6-yqrwEe | Poly by Google | CC-BY-3.0
 
 skill_rock_0-5.glb, temple.glb | modélisés sous Blender (script : tools/make_skill_models.py) | Thomas Le Bourdon | modèles originaux
+
+Modèles réalisés pour ce site sous Blender (tools/make_world_models.py, licence libre de ce dépôt) :
+jelly.glb (méduse lumineuse), reef_angel / reef_tang / reef_butter / lantern (poissons), rock_a…rock_e (roches stratifiées).

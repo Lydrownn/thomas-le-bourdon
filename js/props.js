@@ -1,5 +1,6 @@
 // Décors procéduraux : rochers, éponges, anémones, cheminées, et les objets à explorer.
 import * as THREE from 'three';
+import { raw, hasModel } from './assets.js';
 
 export const rand = (a, b) => a + Math.random() * (b - a);
 export const pick = (arr) => arr[(Math.random() * arr.length) | 0];
@@ -20,7 +21,36 @@ export function rockGeometry(seed = Math.random() * 100, amp = 0.28, detail = 2)
   return g;
 }
 
+// Roches stratifiées modélisées sous Blender (rock_a…e), normalisées pour tenir dans [-1, 1]³ comme l'ancienne sphère.
+const ROCK_MODELS = ['rock_a', 'rock_b', 'rock_c', 'rock_d', 'rock_e'];
+const rockMats = new Map();
+const rockFit = new Map();
+
 export function rock(color, { sx = 1, sy = 1, sz = 1, seed } = {}) {
+  const names = ROCK_MODELS.filter(hasModel);
+  if (names.length) {
+    const name = pick(names);
+    const m = raw(name);
+    if (!rockFit.has(name)) {
+      const box = new THREE.Box3().setFromObject(m);
+      const c = box.getCenter(new THREE.Vector3()), h = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+      rockFit.set(name, { c, k: new THREE.Vector3(1 / h.x, 1 / h.y, 1 / h.z) });
+    }
+    const { c, k } = rockFit.get(name);
+    if (!rockMats.has(color)) {
+      rockMats.set(color, new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(1.4), roughness: 0.95, vertexColors: true }));
+    }
+    const mat = rockMats.get(color);
+    m.traverse((o) => { if (o.isMesh) o.material = mat; });
+    const fit = new THREE.Group();
+    m.position.copy(c).negate();
+    fit.add(m);
+    fit.scale.copy(k);
+    const g = new THREE.Group();
+    g.add(fit);
+    g.scale.set(sx, sy, sz);
+    return g;
+  }
   const m = new THREE.Mesh(rockGeometry(seed), new THREE.MeshStandardMaterial({ color, roughness: 0.95, flatShading: true }));
   m.scale.set(sx, sy, sz);
   m.userData.own = true;

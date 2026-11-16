@@ -11,12 +11,19 @@ export const MODELS = [
   'anchor', 'chest_gold', 'octopus', 'crab', 'urchin',
   'coral1', 'coral2', 'coral3', 'coral_orange', 'seaweed', 'kelp1',
   'rock2', 'rocks3', 'rocks4',
+  // Modèles faits sous Blender (tools/make_world_models.py)
+  'jelly', 'reef_angel', 'reef_tang', 'reef_butter', 'lantern', 'rock_a', 'rock_b', 'rock_c', 'rock_d', 'rock_e',
 ];
 
 export async function loadModels(names = MODELS) {
   await Promise.all(names.map(async (n) => {
     try {
-      cache.set(n, await loader.loadAsync(`assets/models/${n}.glb`));
+      const gltf = await loader.loadAsync(`assets/models/${n}.glb`);
+      if (/^(reef_|lantern)/.test(n)) {
+        // Nageoires = surfaces planes : visibles des deux côtés.
+        gltf.scene.traverse((o) => { if (o.isMesh) [o.material].flat().forEach((m) => { m.side = THREE.DoubleSide; m.metalness = 0; }); });
+      }
+      cache.set(n, gltf);
     } catch (e) {
       console.warn(`[portfolio] modèle ${n} indisponible`, e);
     }
@@ -54,6 +61,8 @@ export function instance(name, { size = 1, anchor = 'base', fix = null } = {}) {
   const root = new THREE.Group();
   root.add(inner);
   root.traverse((o) => { if (o.isSkinnedMesh) o.frustumCulled = false; });
+  const tail = root.getObjectByName('Tail');
+  if (tail && /^(reef_|lantern)/.test(name)) root.userData.tail = tail;
 
   if (animated) {
     const mixer = new THREE.AnimationMixer(model);

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import * as P from './props.js';
 import { loadModels, hasModel, raw } from './assets.js';
+import { makeJelly, pulseJelly } from './jelly.js';
 
 const { rand } = P;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -293,6 +294,19 @@ export class SkillsZone {
 
     this.buildTemple();
 
+    // Méduses lumineuses qui dérivent au-dessus de la grotte
+    this.jellies = [];
+    if (hasModel('jelly')) {
+      const spots = [[-12, 5.5, -4, 0xff7ad9], [13, 6.5, -6, 0x6fe8ff], [-6.5, 9, -11, 0xb98bff], [7, 4, -10, 0x7affb0], [1, 11, -17, 0xffa2c0], [-17, 8, -14, 0x6fe8ff]];
+      for (const [x, y, z, c] of spots) {
+        const j = makeJelly(c, this.o.glowTex);
+        j.group.scale.setScalar(rand(1.0, 1.6));
+        j.group.position.set(x, y, z);
+        g.add(j.group);
+        this.jellies.push({ j, x, y, z, ph: rand(0, 6.28) });
+      }
+    }
+
     // Flore lumineuse
     this.glowers = [];
     const spots = [[-13, -1], [13, 0], [-9, 5], [10, 6], [-16, -8], [17, -7], [0, -9], [-5, -12], [6, -13], [-20, 3], [21, 4]];
@@ -499,7 +513,8 @@ export class SkillsZone {
     this.sprintV = 0;
     o.camAnim = null;
     o.rovFocus = this.sprintPos;
-    o.focusPoint = V(0, 0, -30);
+    this.headFrom = o.rovHeading;
+    this.steer(0, 0.9);
     cb.onStart?.();
     if (o.reduced) this.swap(true);
   }
@@ -520,7 +535,8 @@ export class SkillsZone {
     this.sprintPos.copy(o.rov.position);
     this.sprintV = 0;
     o.rovFocus = this.sprintPos;
-    o.focusPoint = V(0, 0, -30);
+    this.headFrom = o.rovHeading;
+    this.steer(0, 0.7);
     cb.onStart?.();
     if (o.reduced) this.swap(false);
     return true;
@@ -589,12 +605,20 @@ export class SkillsZone {
     m.material.map?.dispose();
     m.material.map = tex;
     m.material.needsUpdate = true;
-    const dist = o.camera.position.distanceTo(b.gem) - 1.2; // la carte est un peu en avant du piédestal
-    const visHalfW = Math.tan(THREE.MathUtils.degToRad(o.camera.fov / 2)) * dist * o.camera.aspect;
-    const W = Math.min(7, visHalfW * 1.7), H = W / aspect;
-    const lim = Math.max(0, visHalfW - W / 2 - 0.4);
-    const tx = THREE.MathUtils.clamp(b.gem.x, -lim, lim);
-    const to = V(tx, b.gem.y + 1.5 + H / 2, b.gem.z + 1.2);
+    // La carte est placée dans le champ de la caméra : on mesure la largeur visible à sa profondeur,
+    // on la rapproche un peu du centre, puis on la garde entièrement à l'écran (marges de 6 %).
+    const cam = o.camera;
+    const fwd = cam.getWorldDirection(V(0, 0, 0));
+    const depth = Math.max(4, V(0, 0, 0).subVectors(b.gem, cam.position).dot(fwd) - 1.2);
+    const th = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+    const visH = th * depth, visW = visH * cam.aspect;
+    const W = Math.min(7, visW * 1.7), H = W / aspect;
+    const limX = Math.max(0, visW * 0.94 - W / 2);
+    const tx = THREE.MathUtils.clamp(b.gem.x * 0.7, -limX, limX);
+    const camY = cam.position.y + fwd.y * depth;
+    const wantY = b.gem.y + 1.5 + H / 2;
+    const ty = Math.min(wantY, camY + visH * 0.94 - H / 2);
+    const to = V(tx, Math.max(ty, b.gem.y + 0.9 + H / 2), b.gem.z + 1.2);
     this.card = { i, t: 0, hiding: false, from: b.gem.clone(), to, W, H };
     m.visible = this.cardBeam.visible = true;
     this.cardBeam.material.color.copy(b.color);
@@ -648,6 +672,7 @@ export class SkillsZone {
         sp.y += (0.4 - sp.y) * k;
         o.rov.position.copy(sp);
         o.rov.position.y += Math.sin(t * 38) * 0.035 * smooth(0.3, 1.2, T);
+        this.steer(T, 0.9);
         const b = smooth(0, 0.9, T);
         const rig = V(sp.x * 0.5 + Math.sin(t * 1.3) * 0.25, sp.y + 2.2, sp.z + 8.2 + v * 0.05);
         o.camera.position.lerpVectors(this.camStart, rig, b);
@@ -669,7 +694,6 @@ export class SkillsZone {
         o.rovBoost = 1;
         o.rovSpeed = null;
         this.cb.onReady?.();
-        o.jellies?.();
       }
     } else if (this.phase === 'out') {
       cloud = smooth(0, 0.6, T) * (1 - smooth(T_BACK, T_BACK_END - 0.3, T));
@@ -680,7 +704,7 @@ export class SkillsZone {
         this.sprintV = 44 * smooth(0, 0.9, T);
         this.sprintPos.z -= this.sprintV * dt;
         o.rov.position.copy(this.sprintPos);
-        o.focusPoint = V(this.sprintPos.x, this.sprintPos.y, this.sprintPos.z - 20);
+        this.steer(T, 0.7);
       }
       if (T >= T_BACK && this.swapped) this.swap(false);
       if (T >= T_BACK && !this.swapped) this.veil.material.color.lerp(FOAM, 0.08);
@@ -706,6 +730,16 @@ export class SkillsZone {
     if (this.phase === 'zone') this.updateZone(dt, t);
     this.updateCard(dt);
     this.animateScene(dt, t);
+  }
+
+  // Cap du robot pendant la course : il pivote progressivement (par le plus court) jusqu'à regarder
+  // droit devant lui (vers le fond), sans jamais se retourner d'un coup.
+  steer(T, dur) {
+    const o = this.o;
+    let d = Math.PI / 2 - this.headFrom;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    const h = this.headFrom + d * smooth(0, dur, T);
+    o.focusPoint = this.sprintPos.clone().add(V(Math.cos(h) * 10, 0, -Math.sin(h) * 10));
   }
 
   hideWorld() {
@@ -741,9 +775,11 @@ export class SkillsZone {
       this.ray.setFromCamera(o.mouse, o.camera);
       if (this.ray.ray.intersectPlane(this.plane, this.hit)) {
         const target = V(THREE.MathUtils.clamp(this.hit.x, -o.halfW * 0.9, o.halfW * 0.9), THREE.MathUtils.clamp(this.hit.y, -0.5, 7), 3);
-        if (Math.abs(target.x - o.rov.position.x) > 1.2) this.face = Math.sign(target.x - o.rov.position.x);
         o.rovFocus = target;
-        o.focusPoint = target.clone().add(V(this.face * 3, -0.6, -4.5)); // reste de trois quarts, face à la grotte
+        // Toujours face à la grotte ; le nez penche doucement vers le curseur, sans changer de côté d'un coup.
+        const lean = THREE.MathUtils.clamp((target.x - o.rov.position.x) * 0.6, -2.5, 2.5);
+        this.lean = (this.lean ?? 0) + (lean - (this.lean ?? 0)) * (1 - Math.exp(-dt * 3));
+        o.focusPoint = target.clone().add(V(this.lean + 1.2, -0.6, -4.5));
       }
     }
   }
@@ -771,6 +807,12 @@ export class SkillsZone {
       for (const r of b.runes) r.emissiveIntensity = 0.12 + b.k * 0.55 + pulse * 0.3;
       b.crystal.rotation.y += dt * (0.5 + b.k * 1.8);
     });
+    for (const e of this.jellies ?? []) {
+      const p = Math.sin(t * 1.8 + e.ph);
+      pulseJelly(e.j, p);
+      e.j.group.position.set(e.x + Math.sin(t * 0.25 + e.ph) * 1.4, e.y + Math.sin(t * 0.5 + e.ph) * 0.8 + Math.max(0, -p) * 0.12, e.z);
+      e.j.group.rotation.y += dt * 0.12;
+    }
     for (const m of this.templeFx ?? []) m.emissiveIntensity = 0.5 + 0.2 * Math.sin(t * 1.1);
     if (this.portal) this.portal.opacity = 0.28 + 0.1 * Math.sin(t * 0.9);
     if (this.celebrate >= 0) this.celebrate += dt;

@@ -24,6 +24,7 @@ portfolio/
 ├── js/skills.js        # Section Compétences : HUD, carte de compétence, éclairage des blocs
 ├── js/skillszone.js    # Compétences : sprint du robot + grotte 3D (temple marin, six roches anciennes)
 ├── tools/make_skill_models.py  # Génère temple.glb et skill_rock_*.glb (blender -b -P tools/make_skill_models.py -- assets/models)
+├── tools/make_world_models.py  # Génère méduse, poissons et roches (blender -b -P tools/make_world_models.py -- assets/models)
 ├── js/props.js         # Décors procéduraux (rochers, éponges, anémones, objets à explorer)
 ├── js/assets.js        # Chargement et normalisation des modèles .glb
 ├── assets/models/      # Modèles 3D (voir CREDITS.txt pour les licences)

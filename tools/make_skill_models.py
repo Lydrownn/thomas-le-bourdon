@@ -42,6 +42,8 @@ def colour(p, n, kind, base, seed):
         return (0.04, 0.06, 0.12, 1)
     if kind in ('glow', 'portal'):
         return (1, 1, 1, 1)
+    if callable(base):
+        return (*base(p, n), 1)
     b = base or {'stone': STONE, 'dark': STONE_DARK, 'bronze': BRONZE}[kind]
     h = hsh(round(p.x * 2.7, 2), round(p.y * 2.7, 2), round(p.z * 2.7, 2), seed)
     c = tuple(x * (0.78 + 0.44 * h) for x in b)

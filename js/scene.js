@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { loadModels, instance, tint, hasModel } from './assets.js';
+import { makeJelly, pulseJelly, setJellyTime } from './jelly.js';
 import * as P from './props.js';
 import { SkillsZone } from './skillszone.js';
 
@@ -988,14 +989,18 @@ export class Ocean {
     if (dir < 0) inner.rotation.y = Math.PI;
     root.add(inner);
     const size = rand(0.7, 1.1) * scale * (this.narrow ? 0.6 : 1);
-    const species = palette === PALETTES.tropical && hasModel('butterflyfish') ? pick(['butterflyfish', 'clownfish']) : null;
+    const reef = palette === PALETTES.tropical && hasModel('reef_tang');
+    const lantern = glow && hasModel('lantern');
+    const species = !reef && palette === PALETTES.tropical && hasModel('butterflyfish') ? pick(['butterflyfish', 'clownfish']) : null;
     const n = species ? Math.round(count * 0.6) : count;
     const fishes = [];
     for (let i = 0; i < n; i++) {
-      const f = species
-        ? instance(species, { size: 0.95 * size * rand(0.85, 1.15), anchor: 'center', fix: 'fish' })
-        : makeFish(pick(palette), glow);
-      if (!species) f.scale.setScalar(size * rand(0.8, 1.2));
+      let f;
+      if (reef) f = instance(pick(['reef_angel', 'reef_tang', 'reef_butter']), { size: 1.8 * size * rand(0.85, 1.15), anchor: 'center' });
+      else if (lantern) f = instance('lantern', { size: 1.1 * size * rand(0.85, 1.15), anchor: 'center' });
+      else if (species) f = instance(species, { size: 0.95 * size * rand(0.85, 1.15), anchor: 'center', fix: 'fish' });
+      else f = makeFish(pick(palette), glow);
+      if (!species && !reef && !lantern) f.scale.setScalar(size * rand(0.8, 1.2));
       const off = V(rand(-4.5, 4.5), rand(-1.8, 1.8), rand(-2, 2));
       f.position.copy(off);
       inner.add(f);
@@ -1011,6 +1016,7 @@ export class Ocean {
         f.position.y = off.y + Math.sin(t * 1.6 + ph) * 0.25;
         f.rotation.z = Math.cos(t * 1.6 + ph) * 0.12;
         if (f.userData.tail) f.userData.tail.rotation.y = Math.sin(t * 12 + ph) * 0.55;
+        if (f.userData.tail && f.userData.mixer === undefined) f.rotation.y = Math.sin(t * 6 + ph) * 0.1;
       }
       return dir * root.position.x < edge;
     });
@@ -1107,7 +1113,8 @@ export class Ocean {
   }
 
   jellies() {
-    const colors = [0xff7ad9, 0xb98bff, 0x6fe8ff, 0xffa2c0];
+    const colors = [0xff7ad9, 0xb98bff, 0x6fe8ff, 0xffa2c0, 0x7affb0];
+    if (hasModel('jelly')) { this.glowJellies(colors); return; }
     const bellGeo = new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     const mats = [];
     const jellies = [];
@@ -1164,6 +1171,39 @@ export class Ocean {
       }
       return alive;
     }, () => { bellGeo.dispose(); mats.forEach((m) => m.dispose()); });
+  }
+
+  // Méduses lumineuses (modèle Blender) qui remontent lentement et pulsent.
+  glowJellies(colors) {
+    const root = new THREE.Group();
+    const list = [];
+    const mats = [];
+    const n = this.narrow ? 4 : 7;
+    for (let i = 0; i < n; i++) {
+      const j = makeJelly(pick(colors), this.glowTex);
+      mats.push(...j.mats);
+      const sc = rand(0.7, 1.3);
+      j.group.scale.setScalar(sc);
+      const z = rand(-9, 2);
+      j.group.position.set(rand(-0.85, 0.85) * this.edgeAt(z), -this.halfH - rand(3, 12), z);
+      j.group.rotation.set(rand(-0.15, 0.15), rand(0, 6.28), rand(-0.15, 0.15));
+      root.add(j.group);
+      list.push({ j, ph: rand(0, 6.28), speed: rand(0.9, 1.5), y0: j.group.position.y });
+    }
+    const maxRise = this.halfH * 2.6 + 18;
+    this.add(root, (dt, t) => {
+      let alive = false;
+      for (const e of list) {
+        const p = Math.sin(t * 2 + e.ph);
+        pulseJelly(e.j, p);
+        const g = e.j.group;
+        g.position.y += (e.speed * 0.5 + Math.max(0, -p) * e.speed) * dt;
+        g.position.x += Math.sin(t * 0.5 + e.ph) * dt * 0.2;
+        g.rotation.y += dt * 0.15;
+        if (g.position.y - e.y0 < maxRise) alive = true;
+      }
+      return alive;
+    }, () => mats.forEach((m) => m.dispose()));
   }
 
   sonar() {
@@ -1293,6 +1333,7 @@ export class Ocean {
     this.camera.lookAt(this.camLook);
 
     this.updateSnow(dt, worldDelta);
+    setJellyTime(this.time);
     this.updateRov(dt);
     this.updateAngler(dt);
     this.zone.update(dt, this.time);
