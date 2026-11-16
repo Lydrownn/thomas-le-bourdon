@@ -359,3 +359,45 @@ html.focusing.focus-flip .meter { opacity: 0; }
   #vignette { background: radial-gradient(ellipse 90% 60% at 50% 25%, transparent 30%, rgba(0,4,12,.75) 100%); }
   .reading-toggle { top: 12px; right: 12px; }
 }
+
+/* ─── Zone des compétences (cinématique + grotte) ─── */
+html.skills-mode #vignette,
+html.skills-mode.focus-flip #vignette { background: radial-gradient(ellipse 85% 85% at 50% 50%, transparent 45%, rgba(2,4,18,.7) 100%); }
+
+.skills-hud { position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0; transition: opacity .9s ease; }
+.skills-hud[hidden] { display: none; }
+.skills-hud.open { opacity: 1; }
+.skills-hud > * { pointer-events: auto; }
+.skills-head { position: absolute; top: 22px; left: clamp(16px, 3vw, 40px); max-width: 340px; text-shadow: 0 2px 14px rgba(0,0,12,.6); }
+.skills-head h2 { font-size: clamp(30px, 3.4vw, 44px); margin: 2px 0 10px; }
+.skills-progress { display: flex; align-items: center; gap: 12px; font: 600 14px var(--font-display); }
+.skills-dots { display: flex; gap: 7px; }
+.skills-dots i {
+  width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.06);
+  transition: background .5s, box-shadow .5s, border-color .5s;
+}
+.skills-dots i.on { background: var(--c); border-color: var(--c); box-shadow: 0 0 14px var(--c); }
+.skills-hint { margin-top: 10px; font-size: 14px; color: var(--muted); }
+.skills-hud.complete .skills-hint { color: #7affe0; }
+.skills-exit {
+  position: absolute; right: clamp(16px, 3vw, 40px); top: 22px; font: 600 13px var(--font-display); letter-spacing: .04em; cursor: pointer;
+  color: var(--ink); padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35);
+  background: rgba(4,18,31,.45); backdrop-filter: blur(6px);
+}
+.skills-exit:hover { background: rgba(255,255,255,.14); }
+.skill-card {
+  position: absolute; right: clamp(16px, 3vw, 40px); top: 76px; width: min(380px, calc(100vw - 32px));
+  padding: 18px 22px 20px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  background: rgba(6,14,40,.62); backdrop-filter: blur(12px);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--c) 28%, transparent), 0 18px 50px rgba(0,0,0,.4);
+}
+.skill-card[hidden] { display: none; }
+.skill-card.in { animation: cardIn .55s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+.skill-card h3 { font-size: 22px; color: var(--c); text-shadow: 0 0 18px color-mix(in srgb, var(--c) 60%, transparent); }
+@media (max-width: 760px) {
+  .skills-head { top: 14px; max-width: 60vw; }
+  .skills-head h2 { font-size: 28px; margin-bottom: 6px; }
+  .skills-exit { top: 14px; padding: 8px 12px; font-size: 12px; }
+  .skill-card { top: 104px; right: 16px; padding: 14px 16px; }
+}

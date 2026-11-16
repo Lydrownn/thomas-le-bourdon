@@ -21,6 +21,8 @@ portfolio/
 ├── css/style.css       # Mise en page, surface, fiche d'exploration, bulles DOM
 ├── js/app.js           # Jauge, couleur de l'eau, déclencheurs, exploration, mode lecture
 ├── js/scene.js         # Scène 3D : ROV, stations, falaises, plancher, créatures, zoom
+├── js/skills.js        # Section Compétences : HUD, carte de compétence, éclairage des blocs
+├── js/skillszone.js    # Compétences : cinématique de plongée + grotte 3D aux six blocs
 ├── js/props.js         # Décors procéduraux (rochers, éponges, anémones, objets à explorer)
 ├── js/assets.js        # Chargement et normalisation des modèles .glb
 ├── assets/models/      # Modèles 3D (voir CREDITS.txt pour les licences)

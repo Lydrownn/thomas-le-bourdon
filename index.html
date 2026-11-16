@@ -43,6 +43,21 @@
     <button class="panel-back" type="button">↑ Reprendre la descente</button>
   </div>
 
+  <!-- Zone des compétences : superposition affichée après la cinématique de plongée -->
+  <div id="skills-hud" class="skills-hud" hidden>
+    <div class="skills-head">
+      <p class="depth-tag">2 200 m · Grotte des compétences</p>
+      <h2>Compétences</h2>
+      <div class="skills-progress"><span class="skills-dots"></span><b class="skills-count">0 / 6</b></div>
+      <p class="skills-hint"></p>
+    </div>
+    <button class="skills-exit" type="button">↑ Reprendre la descente</button>
+    <article class="skill-card" hidden>
+      <h3></h3>
+      <ul class="chips"></ul>
+    </article>
+  </div>
+
   <!-- ═══════════════ SURFACE ═══════════════ -->
   <header class="hero" data-depth="0">
     <div class="sky">
@@ -256,29 +271,37 @@
     </section>
 
     <!-- ═══════════════ COMPÉTENCES ═══════════════ -->
-    <section id="competences" data-depth="2200" data-event="sonar" data-station="lab">
+    <section id="competences" data-depth="2200" data-event="sonar" data-station="lab" data-mode="dive">
       <div class="wrap">
         <p class="depth-tag reveal">2 200 m</p>
         <h2 class="reveal">Compétences</h2>
         <p class="teaser reveal">Une station de recherche. Son sonar balaie ce que je sais faire.</p>
-        <button class="explore reveal" type="button">Explorer la zone <span aria-hidden="true">→</span></button>
+        <button class="explore reveal" type="button">Plonger plus loin <span aria-hidden="true">→</span></button>
         <div class="details">
           <div class="skills">
-            <div class="skill-group">
+            <div class="skill-group" data-glyph="IA" data-color="#5ee7ff">
               <h3>IA &amp; données</h3>
-              <ul class="chips"><li>Python</li><li>pandas · NumPy</li><li>scikit-learn</li><li>XGBoost</li><li>Jupyter</li><li>Streamlit</li><li>LLM locaux · Ollama</li><li>Évaluation d'agents</li></ul>
+              <ul class="chips"><li>Python</li><li>pandas · NumPy</li><li>scikit-learn</li><li>XGBoost</li><li>Jupyter</li><li>Streamlit</li></ul>
             </div>
-            <div class="skill-group">
+            <div class="skill-group" data-glyph="LLM" data-color="#b48aff">
+              <h3>LLM &amp; agents</h3>
+              <ul class="chips"><li>LLM locaux · Ollama</li><li>Agents de code</li><li>Évaluation d'agents</li><li>MCP</li></ul>
+            </div>
+            <div class="skill-group" data-glyph="IoT" data-color="#7affb0">
               <h3>IoT &amp; embarqué</h3>
               <ul class="chips"><li>C</li><li>Bluetooth Low Energy</li><li>WebSocket</li><li>Python asyncio</li><li>Bases électronique (STI2D)</li></ul>
             </div>
-            <div class="skill-group">
+            <div class="skill-group" data-glyph="&lt;/&gt;" data-color="#ffc233">
               <h3>Développement</h3>
-              <ul class="chips"><li>Java</li><li>SQL</li><li>PHP</li><li>JavaScript · Node.js</li><li>HTML · CSS</li><li>Three.js</li></ul>
+              <ul class="chips"><li>Java</li><li>PHP</li><li>JavaScript · Node.js</li><li>HTML · CSS</li><li>Three.js</li></ul>
             </div>
-            <div class="skill-group">
+            <div class="skill-group" data-glyph="SQL" data-color="#ff7ab0">
+              <h3>Bases de données</h3>
+              <ul class="chips"><li>SQL</li><li>PostgreSQL</li><li>UML</li><li>Modélisation</li></ul>
+            </div>
+            <div class="skill-group" data-glyph="Git" data-color="#ff8a3d">
               <h3>Outils &amp; méthodes</h3>
-              <ul class="chips"><li>Git</li><li>Docker</li><li>Jira</li><li>Scrum Master</li><li>UML</li></ul>
+              <ul class="chips"><li>Git</li><li>Docker</li><li>Bash</li><li>Jira</li><li>Scrum Master</li></ul>
             </div>
           </div>
         </div>

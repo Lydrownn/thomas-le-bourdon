@@ -1,6 +1,7 @@
 // Jauge de profondeur, couleur de l'eau, apparitions, déclencheurs d'animations
 // et exploration des stations (zoom caméra + fiche éclairée par le robot).
 import { Ocean } from './scene.js';
+import { initSkills } from './skills.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -87,7 +88,7 @@ let lastText = '';
     meterZone.textContent = zoneAt(shown);
     lastText = text;
   }
-  const color = colorAt(shown);
+  const color = ocean.bgOverride ?? colorAt(shown);
   document.body.style.backgroundColor = color;
   ocean.setDepth(shown, color);
   gaugeFill.style.height = `${Math.min(100, (scrollY / Math.max(1, html.scrollHeight - innerHeight)) * 100)}%`;
@@ -125,7 +126,7 @@ const lastFired = new WeakMap();
 const eventObs = new IntersectionObserver((entries) => {
   const now = performance.now();
   for (const e of entries) {
-    if (!e.isIntersecting || focused) continue;
+    if (!e.isIntersecting || focused || skills.active) continue;
     if (now - (lastFired.get(e.target) ?? -1e9) < 8000) continue;
     lastFired.set(e.target, now);
     ocean.trigger(e.target.dataset.event);
@@ -145,6 +146,8 @@ let opener = null;
 let openTimer = 0;
 
 function openZone(section, trigger = null) {
+  // Les compétences ont leur propre mise en scène : plongée en cinématique, puis six blocs à éclairer.
+  if (section.dataset.mode === 'dive') { if (!focused) skills.enter(section, trigger); return; }
   if (focused || !ocean.focus(section.id)) return;
   focused = section;
   opener = trigger;
@@ -189,6 +192,7 @@ $$('.explore').forEach((btn) => btn.addEventListener('click', (e) => {
 $('.panel-close').addEventListener('click', closeZone);
 $('.panel-back').addEventListener('click', closeZone);
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZone(); });
+const skills = initSkills(ocean, { puff });
 // Faire défiler hors de la fiche referme l'exploration, comme pour reprendre la descente.
 addEventListener('wheel', (e) => { if (focused && !panel.contains(e.target)) closeZone(); }, { passive: true });
 addEventListener('touchmove', (e) => { if (focused && !panel.contains(e.target)) closeZone(); }, { passive: true });
@@ -196,7 +200,7 @@ addEventListener('touchmove', (e) => { if (focused && !panel.contains(e.target))
 // Survol des stations : curseur + bulle d'aide
 let hoverId = null;
 addEventListener('pointermove', (e) => {
-  if (focused || e.pointerType === 'touch') return;
+  if (focused || skills.active || e.pointerType === 'touch') return;
   const overUi = e.target.closest?.('a, button, .panel, .reading-toggle');
   const id = overUi ? null : ocean.pick(e.clientX, e.clientY);
   if (id !== hoverId) {
@@ -210,6 +214,7 @@ addEventListener('pointermove', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  if (skills.active) return;
   if (focused) {
     if (!panel.contains(e.target)) closeZone();
     return;

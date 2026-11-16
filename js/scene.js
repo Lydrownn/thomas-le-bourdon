@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { loadModels, instance, tint, hasModel } from './assets.js';
 import * as P from './props.js';
+import { SkillsZone } from './skillszone.js';
 
 const { rand, pick } = P;
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -130,6 +131,10 @@ export class Ocean {
     this.focusK = 0;
     this.hovered = null;
     this.raycaster = new THREE.Raycaster();
+    this.rovBoost = 1;      // taille du robot (agrandi pendant la cinématique des compétences)
+    this.rovBoostS = 1;
+    this.rovSpeed = null;   // vitesse de suivi imposée (zone des compétences)
+    this.bgOverride = null; // couleur d'eau imposée (zone des compétences)
 
     this.hemi = new THREE.HemisphereLight(0xcdefff, 0x0a1a33, 1.4);
     this.sun = new THREE.DirectionalLight(0xffffff, 2);
@@ -147,6 +152,7 @@ export class Ocean {
     this.buildRov();
     this.buildBeam();
     this.buildAngler();
+    this.zone = new SkillsZone(this);
 
     addEventListener('resize', () => this.resize());
     addEventListener('pointermove', (e) => {
@@ -343,9 +349,10 @@ export class Ocean {
 
   updateRov(dt) {
     const t = this.time;
-    const show = this.depth > 6 || this.focused ? 1 : 0;
+    const show = this.depth > 6 || this.focused || this.zone.active ? 1 : 0;
     this.rovScale += (show - this.rovScale) * (1 - Math.exp(-dt * 3));
-    const base = (this.narrow ? 0.5 : 0.8) * (this.focused ? 0.75 : 1);
+    this.rovBoostS += (this.rovBoost - this.rovBoostS) * (1 - Math.exp(-dt * 2));
+    const base = (this.narrow ? 0.5 : 0.8) * (this.focused ? 0.75 : 1) * this.rovBoostS;
     this.rov.scale.setScalar(Math.max(0.001, this.rovScale * base));
     this.rov.visible = this.tether.visible = this.rovScale > 0.02;
 
@@ -362,7 +369,7 @@ export class Ocean {
         2,
       );
     }
-    const k = 1 - Math.exp(-dt * (this.rovFocus ? 1.6 : 2.2));
+    const k = 1 - Math.exp(-dt * (this.rovSpeed ?? (this.rovFocus ? 1.6 : 2.2)));
     this.rov.position.lerp(target, k);
 
     // Cap : vers la zone explorée, sinon légèrement tourné vers le lecteur.
@@ -1228,7 +1235,7 @@ export class Ocean {
   }
 
   ambient() {
-    if (this.reduced || this.focused || this.depth < 15 || this.depth > 4100) return;
+    if (this.reduced || this.focused || this.zone.active || this.depth < 15 || this.depth > 4100) return;
     // Plan lointain : bancs et silhouettes qui glissent dans le brouillard, plus lents (parallaxe).
     if (Math.random() < 0.5) {
       const z = rand(-34, -20);
@@ -1264,13 +1271,14 @@ export class Ocean {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this.time += dt;
     const sy = window.scrollY;
-    const deltaPx = this.focused ? 0 : sy - this.lastScroll;
-    if (!this.focused) this.lastScroll = sy;
+    const frozen = this.focused || this.zone.active;
+    const deltaPx = frozen ? 0 : sy - this.lastScroll;
+    if (!frozen) this.lastScroll = sy;
     this.scrollVel += ((deltaPx / Math.max(dt, 1e-3)) - this.scrollVel) * 0.1;
     const worldDelta = deltaPx * this.pxToWorld;
-    if (!this.focused) this.world.position.y = this.lastScroll * this.pxToWorld;
+    if (!frozen) this.world.position.y = this.lastScroll * this.pxToWorld;
 
-    this.focusK += ((this.focused ? 1 : 0) - this.focusK) * (1 - Math.exp(-dt * 2.2));
+    this.focusK += ((this.focused || this.zone.lighting ? 1 : 0) - this.focusK) * (1 - Math.exp(-dt * 2.2));
     this.hemi.intensity = this.baseHemi * (1 - 0.6 * this.focusK);
     this.sun.intensity = this.baseSun * (1 - 0.6 * this.focusK);
 
@@ -1287,6 +1295,7 @@ export class Ocean {
     this.updateSnow(dt, worldDelta);
     this.updateRov(dt);
     this.updateAngler(dt);
+    this.zone.update(dt, this.time);
     if (this.built) this.updateWorld(dt);
     for (const m of this.mixers) m.update(dt);
 
