@@ -15,7 +15,6 @@ export const SKILLS_BG = '#0a1238';
 const FOAM = new THREE.Color(0x9fdcf5);
 const FLOOR_Y = -3.6;
 const ZONE_CAM = { pos: V(0, 3.4, 15.5), look: V(0, -0.6, 0) };
-const PLUNGE_CAM = { pos: V(0, 0, 12), look: V(0, 0, 4) };
 const T_SWAP = 2.4;   // le voile est opaque : on change de décor
 const T_READY = 3.8;  // fin de la cinématique d'entrée
 const T_BACK = 1.5;   // sortie : même principe, en plus court
@@ -117,7 +116,9 @@ export class SkillsZone {
     this.hit = V(0, 0, 0);
     this.face = 1;
     this.cb = {};
-    this.wakeT = 0;
+    this.sprintPos = V(0, 0, 0);
+    this.sprintV = 0;
+    this.camStart = V(0, 0, 20);
 
     this.group = new THREE.Group();
     this.group.visible = false;
@@ -128,7 +129,6 @@ export class SkillsZone {
       new THREE.PlaneGeometry(260, 260),
       new THREE.MeshBasicMaterial({ color: FOAM, transparent: true, opacity: 0, depthWrite: false, fog: false }),
     );
-    this.veil.position.z = 2.2;
     this.veil.frustumCulled = false;
     this.veil.visible = false;
     ocean.scene.add(this.veil);
@@ -136,95 +136,76 @@ export class SkillsZone {
     this.buildStream();
   }
 
-  // ─── Vitesse : bulles qui filent vers l'arrière + sillage du robot ────────
+  // ─── Vitesse : les bulles sortent du robot et restent derrière lui ───────
+  // Toutes rondes (jamais étirées), petites, en espace monde : c'est le robot qui file, pas elles.
   buildStream() {
     const o = this.o;
-    this.streamMat = o.bubbleMat.clone();
-    this.streamMat.opacity = 0.9;
-    this.lineMat = new THREE.SpriteMaterial({
-      map: o.glowTex, color: 0xe6f8ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.5,
-    });
-    this.stream = new THREE.Group();
-    this.streamItems = [];
-    const N = 150, L = 40;
-    for (let i = 0; i < N + L; i++) {
-      const line = i >= N;
-      const s = new THREE.Sprite(line ? this.lineMat : this.streamMat);
-      this.streamItems.push({
-        s, line, nx: rand(-1.3, 1.3), ny: rand(-1.1, 1.1), dz: line ? rand(3, 10) : rand(1.5, 15),
-        vx: line ? rand(2.2, 4) : rand(0.8, 2), size: line ? rand(2, 6) : rand(0.25, 1), ph: rand(0, 6.28),
-      });
-      this.stream.add(s);
-    }
-    this.stream.visible = false;
-    o.scene.add(this.stream);
-
-    // Sillage : petites bulles lâchées derrière les hélices, qui restent en arrière.
-    this.wakeMat = o.bubbleMat.clone();
-    this.wake = new THREE.Group();
-    this.wakeItems = Array.from({ length: 70 }, () => {
-      const s = new THREE.Sprite(this.wakeMat);
+    this.bubMat = o.bubbleMat.clone();
+    this.bubMat.opacity = 0.85;
+    this.bubs = new THREE.Group();
+    this.bubs.visible = false;
+    this.trail = Array.from({ length: 520 }, () => {
+      const s = new THREE.Sprite(this.bubMat);
       s.visible = false;
-      this.wake.add(s);
-      return { s, life: 0, max: 1, vx: 0, vy: 0, size: 0.2 };
+      this.bubs.add(s);
+      return { s, life: 0, max: 1, v: V(0, 0, 0), size: 0.2, ph: 0 };
     });
-    this.wake.visible = false;
-    o.scene.add(this.wake);
+    // Bulles ambiantes : un nuage autour de la caméra qui se recycle vers l'avant, pour sentir la vitesse.
+    this.ambient = Array.from({ length: 170 }, () => {
+      const s = new THREE.Sprite(this.bubMat);
+      this.bubs.add(s);
+      return { s, off: V(rand(-9, 9), rand(-5, 6), rand(-1, 1)), size: rand(0.06, 0.26), ph: rand(0, 6.28), d: rand(1, 28) };
+    });
+    o.scene.add(this.bubs);
+    this.emitAcc = 0;
+    this.lastRov = V(0, 0, 0);
   }
 
-  updateStream(dt, t, k) {
-    this.stream.visible = this.wake.visible = k > 0.01;
-    if (!this.stream.visible) return;
-    const cam = this.o.camera;
-    cam.updateMatrixWorld();
-    const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0);
-    const up = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 1);
-    const fwd = cam.getWorldDirection(V(0, 0, 0));
-    const tan = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
-    const N = this.streamItems.length - 40;
-    this.lineMat.opacity = 0.5 * k;
-    this.streamItems.forEach((b, i) => {
-      // Le robot file vers la droite : tout le décor glisse vers la gauche, de plus en plus vite.
-      b.nx -= b.vx * dt * (0.15 + k * 3);
-      if (b.nx < -1.4) { b.nx = 1.4; b.ny = rand(-1.1, 1.1); }
-      const on = b.line ? k > 0.3 : i / N < k;
-      b.s.visible = on;
-      if (!on) return;
-      const hh = tan * b.dz, hw = hh * cam.aspect;
-      b.s.position.copy(cam.position).addScaledVector(fwd, b.dz)
-        .addScaledVector(right, b.nx * hw)
-        .addScaledVector(up, (b.ny + Math.sin(t * 2 + b.ph) * 0.015) * hh);
-      if (b.line) b.s.scale.set(b.size * (0.4 + k), 0.05, 1);
-      else b.s.scale.set(b.size * (1 + k * 2.2), b.size * (1 - k * 0.1), 1);
-    });
-
-    // Sillage
+  // speed : vitesse du robot (unités/s) ; k : 0..1 pour faire apparaître le nuage ambiant.
+  updateBubbles(dt, t, speed, k) {
     const o = this.o;
-    this.wakeT -= dt;
-    if (k > 0.25 && this.wakeT <= 0) {
-      this.wakeT = 0.035;
-      const rear = o.rov.position.clone().add(V(-1.25 * o.rov.scale.x, rand(-0.25, 0.3) * o.rov.scale.x, rand(-0.5, 0.5)));
-      for (let n = 0; n < 2; n++) {
-        const w = this.wakeItems.find((x) => x.life <= 0);
-        if (!w) break;
-        w.life = w.max = rand(0.5, 0.9);
-        w.vx = -rand(6, 12) * k;
-        w.vy = rand(-0.4, 0.8);
-        w.size = rand(0.1, 0.32);
-        w.s.position.copy(rear);
-        w.s.visible = true;
+    this.bubs.visible = k > 0.01 || this.trail.some((b) => b.life > 0);
+    if (!this.bubs.visible) return;
+    // Émission depuis l'arrière du robot, proportionnelle à sa vitesse.
+    const sc = o.rov.scale.x;
+    const heading = o.rovHeading;
+    const back = V(-Math.cos(heading), 0, Math.sin(heading)); // opposé au nez du robot
+    this.emitAcc += dt * Math.min(230, speed * 6) * (k > 0.01 ? 1 : 0);
+    while (this.emitAcc >= 1) {
+      this.emitAcc--;
+      const b = this.trail.find((x) => x.life <= 0);
+      if (!b) break;
+      b.life = b.max = rand(1.1, 2.2);
+      b.size = rand(0.09, 0.3) * (0.7 + sc * 0.4);
+      b.ph = rand(0, 6.28);
+      b.s.position.copy(o.rov.position)
+        .addScaledVector(back, 1.1 * sc)
+        .add(V(rand(-0.45, 0.45) * sc, rand(-0.35, 0.4) * sc, rand(-0.45, 0.45) * sc));
+      b.v.set(rand(-0.6, 0.6), rand(0.2, 1.2), rand(-0.6, 0.6)).addScaledVector(back, rand(0.5, 2));
+      b.s.visible = true;
+    }
+    for (const b of this.trail) {
+      if (b.life <= 0) continue;
+      b.life -= dt;
+      if (b.life <= 0) { b.s.visible = false; continue; }
+      b.v.x += Math.sin(t * 3 + b.ph) * dt * 1.2;
+      b.s.position.addScaledVector(b.v, dt);
+      const a = b.life / b.max;
+      b.s.scale.setScalar(b.size * (0.5 + 0.5 * smooth(0, 0.25, 1 - a)) * smooth(0, 0.2, a));
+    }
+    // Nuage ambiant autour de la caméra : on recycle ce qui passe derrière elle.
+    const cam = o.camera.position;
+    for (const a of this.ambient) {
+      a.s.visible = k > 0.01;
+      if (!a.s.visible) continue;
+      const rel = a.s.position.z - cam.z;
+      if (rel > 3 || a.s.position.z === 0 && a.s.position.x === 0) {
+        a.s.position.set(cam.x + a.off.x, cam.y + a.off.y, cam.z - rand(8, 32));
+        a.d = rand(0, 1);
       }
+      a.s.position.y += Math.sin(t * 1.5 + a.ph) * dt * 0.1 + dt * 0.15;
+      a.s.scale.setScalar(a.size * k);
     }
-    for (const w of this.wakeItems) {
-      if (w.life <= 0) continue;
-      w.life -= dt;
-      if (w.life <= 0) { w.s.visible = false; continue; }
-      w.s.position.x += w.vx * dt;
-      w.s.position.y += w.vy * dt;
-      const a = w.life / w.max;
-      w.s.scale.setScalar(w.size * (1.6 - a * 0.6));
-    }
-    this.wakeMat.opacity = 0.85;
   }
 
   // ─── Décor de la grotte ───────────────────────────────────────────────────
@@ -421,17 +402,22 @@ export class SkillsZone {
     this.active = true;
     this.phase = 'in';
     this.swapped = false;
+    this.worldHidden = false;
     this.light = null;
     this.lighting = false;
     this.celebrate = -1;
     this.T = o.reduced ? T_SWAP : 0;
     this.veil.visible = true;
     this.veil.material.color.copy(FOAM);
-    o.rovBoost = 1.5;
-    o.rovSpeed = 2.2;
-    o.rovFocus = V(0, 0, 4);
-    o.focusPoint = V(8, 0.2, 4);
-    if (!o.reduced) o.animateCamera(PLUNGE_CAM.pos.clone(), PLUNGE_CAM.look.clone(), T_SWAP);
+    o.rovBoost = 1.25;
+    o.rovSpeed = 40;
+    this.sprintPos.copy(o.rov.position);
+    this.sprintFrom = o.rov.position.clone();
+    this.camStart.copy(o.camera.position);
+    this.sprintV = 0;
+    o.camAnim = null;
+    o.rovFocus = this.sprintPos;
+    o.focusPoint = V(0, 0, -30);
     cb.onStart?.();
     if (o.reduced) this.swap(true);
   }
@@ -447,9 +433,12 @@ export class SkillsZone {
     this.hideCard(true);
     this.veil.visible = true;
     this.veil.material.color.set(SKILLS_BG);
-    o.rovBoost = 1.4;
-    o.rovFocus = V(0, 0.5, 4);
-    o.focusPoint = V(8, 0.7, 4);
+    o.rovBoost = 1.25;
+    o.rovSpeed = 40;
+    this.sprintPos.copy(o.rov.position);
+    this.sprintV = 0;
+    o.rovFocus = this.sprintPos;
+    o.focusPoint = V(0, 0, -30);
     cb.onStart?.();
     if (o.reduced) this.swap(false);
     return true;
@@ -464,14 +453,25 @@ export class SkillsZone {
     o.effects.length = 0;
     o.bgOverride = inside ? SKILLS_BG : null;
     if (inside) {
+      // La caméra se pose dans la grotte ; le robot y entre en freinant, ses bulles le suivent.
       o.rovBoost = 1;
-      o.rovSpeed = 2.4;
-      o.camera.position.copy(PLUNGE_CAM.pos);
-      o.animateCamera(ZONE_CAM.pos.clone(), ZONE_CAM.look.clone(), T_READY - T_SWAP);
+      o.rovSpeed = 3.2;
+      o.camAnim = null;
+      o.camera.position.copy(ZONE_CAM.pos);
+      o.camLook.copy(ZONE_CAM.look);
+      o.rov.position.set(0, 0.8, 13);
+      o.rovFocus = V(0, 0.8, 3);
+      o.focusPoint = V(0, 0.8, -20);
+      this.lastRov.copy(o.rov.position);
+      o.camera.lookAt(o.camLook);
     } else {
       o.camera.position.set(0, 0, 20);
       o.camLook.set(0, 0, 0);
       o.camAnim = null;
+      o.rovFocus = o.focusPoint = null;
+      o.rovSpeed = null;
+      o.rov.position.set(o.halfW * (o.narrow ? 0.55 : 0.72), o.halfH * 0.5, 2);
+      this.lastRov.copy(o.rov.position);
     }
   }
 
@@ -548,25 +548,54 @@ export class SkillsZone {
     const o = this.o;
     this.T += dt;
     const T = this.T;
-    let veil = 0, stream = 0;
+    let veil = 0, cloud = 0, emit = false;
+    const speed = o.rov.position.distanceTo(this.lastRov) / Math.max(dt, 1e-3);
+    this.lastRov.copy(o.rov.position);
 
     if (this.phase === 'in') {
-      stream = smooth(0, 1.2, T) * (1 - smooth(T_SWAP + 0.2, 3.4, T));
-      veil = T < T_SWAP ? smooth(1, 2.2, T) : 1 - smooth(T_SWAP, T_READY, T);
-      this.veil.material.color.copy(FOAM).lerp(new THREE.Color(SKILLS_BG), smooth(1.6, T_SWAP, T));
-      if (T >= T_SWAP && !this.swapped) this.swap(true);
-      if (this.swapped && T < T_READY) this.rushJitter(t, stream, 0);
-      else if (!this.swapped) this.rushJitter(t, stream, 0);
+      cloud = smooth(0, 0.8, T) * (1 - smooth(T_SWAP + 0.1, T_SWAP + 0.9, T));
+      emit = T < T_READY - 0.4;
+      if (!this.swapped) {
+        // Sprint : le robot fonce droit devant lui (vers le fond), la caméra le suit par l'arrière.
+        const v = 46 * smooth(0.2, 1.5, T);
+        const k = 1 - Math.exp(-dt * 3);
+        const sp = this.sprintPos;
+        sp.z -= v * dt;
+        sp.x += (0 - sp.x) * k;
+        sp.y += (0.4 - sp.y) * k;
+        o.rov.position.copy(sp);
+        o.rov.position.y += Math.sin(t * 38) * 0.035 * smooth(0.3, 1.2, T);
+        const b = smooth(0, 0.9, T);
+        const rig = V(sp.x * 0.5 + Math.sin(t * 1.3) * 0.25, sp.y + 2.2, sp.z + 8.2 + v * 0.05);
+        o.camera.position.lerpVectors(this.camStart, rig, b);
+        o.camLook.lerpVectors(V(0, 0, 0), V(sp.x, sp.y + 0.1, sp.z - 6), b);
+        o.camera.lookAt(o.camLook);
+        // Voile : le décor de l'océan disparaît dans l'écume, puis s'assombrit vers la grotte.
+        veil = smooth(0, 0.9, T);
+        this.veil.material.color.copy(FOAM).lerp(new THREE.Color(SKILLS_BG), smooth(0.9, T_SWAP, T));
+        if (T >= 1.1 && !this.worldHidden) this.hideWorld();
+        if (T >= T_SWAP) this.swap(true);
+      } else {
+        veil = 1 - smooth(T_SWAP, T_SWAP + 0.9, T);
+      }
       if (T >= T_READY) {
         this.phase = 'zone';
         o.rovBoost = 1;
+        o.rovSpeed = null;
         this.cb.onReady?.();
         o.jellies?.();
       }
     } else if (this.phase === 'out') {
-      stream = smooth(0, 1, T) * (1 - smooth(T_BACK, T_BACK_END - 0.3, T));
-      veil = T < T_BACK ? smooth(0.4, 1.3, T) : 1 - smooth(T_BACK, T_BACK_END, T);
-      this.rushJitter(t, stream, 0.5);
+      cloud = smooth(0, 0.6, T) * (1 - smooth(T_BACK, T_BACK_END - 0.3, T));
+      emit = T < T_BACK;
+      veil = T < T_BACK ? smooth(0.5, 1.4, T) : 1 - smooth(T_BACK, T_BACK_END, T);
+      if (this.swapped) {
+        // Le robot s'élance vers le fond de la grotte et disparaît dans le voile.
+        this.sprintV = 44 * smooth(0, 0.9, T);
+        this.sprintPos.z -= this.sprintV * dt;
+        o.rov.position.copy(this.sprintPos);
+        o.focusPoint = V(this.sprintPos.x, this.sprintPos.y, this.sprintPos.z - 20);
+      }
       if (T >= T_BACK && this.swapped) this.swap(false);
       if (T >= T_BACK && !this.swapped) this.veil.material.color.lerp(FOAM, 0.08);
       if (T >= T_BACK_END) {
@@ -577,22 +606,29 @@ export class SkillsZone {
         o.rovBoost = 1;
         o.rovSpeed = null;
         this.veil.visible = false;
-        this.updateStream(dt, t, 0);
+        this.updateBubbles(dt, t, 0, 0, false);
         this.cb.onClosed?.();
         return;
       }
     }
     this.veil.material.opacity = veil;
-    this.updateStream(dt, t, stream);
+    // Le voile suit la caméra, juste derrière le robot.
+    this.veil.position.copy(o.camera.position).addScaledVector(o.camera.getWorldDirection(V(0, 0, 0)), 13.5);
+    this.veil.quaternion.copy(o.camera.quaternion);
+    this.updateBubbles(dt, t, speed, cloud, emit);
 
     if (this.phase === 'zone') this.updateZone(dt, t);
     this.updateCard(dt);
     this.animateScene(dt, t);
   }
 
-  // Le robot « fonce » : légères vibrations pendant la poussée.
-  rushJitter(t, k, y0) {
-    this.o.rovFocus.set(Math.sin(t * 23) * 0.09 * k, y0 + Math.sin(t * 31) * 0.07 * k, 4);
+  hideWorld() {
+    const o = this.o;
+    this.worldHidden = true;
+    o.world.visible = false;
+    for (let i = o.effects.length - 1; i >= 0; i--) o.removeEffect(o.effects[i]);
+    o.effects.length = 0;
+    o.bgOverride = SKILLS_BG;
   }
 
   updateZone(dt, t) {
