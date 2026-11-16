@@ -7,7 +7,7 @@ const html = document.documentElement;
 export function initSkills(ocean, { puff }) {
   const zone = ocean.zone;
   const hud = $('#skills-hud');
-  const card = $('.skill-card', hud);
+  const sr = $('.skills-sr', hud);
   const dots = $('.skills-dots', hud);
   const count = $('.skills-count', hud);
   const hint = $('.skills-hint', hud);
@@ -34,17 +34,9 @@ export function initSkills(ocean, { puff }) {
     hud.classList.toggle('complete', lit.size === groups.length);
   }
 
-  function showCard(i) {
-    shown = i;
-    const g = groups[i];
-    card.style.setProperty('--c', g.color);
-    $('h3', card).textContent = g.title;
-    $('.chips', card).innerHTML = g.items.map((t) => `<li>${t}</li>`).join('');
-    card.hidden = false;
-    card.classList.remove('in');
-    void card.offsetWidth; // relance l'animation
-    card.classList.add('in');
-    [...card.querySelectorAll('.chips li')].forEach((el, k) => setTimeout(() => puff(el, 3), 150 + k * 90));
+  // Le texte est affiché en 3D par la zone ; on le répète ici pour les lecteurs d'écran.
+  function announce(i) {
+    sr.textContent = `${groups[i].title} : ${groups[i].items.join(', ')}`;
   }
 
   function enter(section, trigger = null) {
@@ -56,8 +48,8 @@ export function initSkills(ocean, { puff }) {
     opener = trigger;
     lit.clear();
     shown = -1;
-    card.hidden = true;
-    hint.textContent = 'Clique sur un bloc : le robot va l’éclairer.';
+    sr.textContent = '';
+    hint.textContent = 'Clique sur une pierre : le robot va l’éclairer.';
     renderProgress();
     zone.enter(groups, {
       onStart: () => {
@@ -73,12 +65,13 @@ export function initSkills(ocean, { puff }) {
       },
       onLit: (i) => {
         lit.add(i);
+        announce(i);
         renderProgress();
         if (lit.size === groups.length) {
           zone.celebrateAll();
-          hint.textContent = 'Zone entièrement éclairée. Tout est là.';
+          hint.textContent = 'Toutes les pierres brillent. Tout est là.';
         } else {
-          hint.textContent = `Encore ${groups.length - lit.size} bloc${groups.length - lit.size > 1 ? 's' : ''} dans l’ombre.`;
+          hint.textContent = `Encore ${groups.length - lit.size} pierre${groups.length - lit.size > 1 ? 's' : ''} dans l’ombre.`;
         }
       },
     });
@@ -95,7 +88,6 @@ export function initSkills(ocean, { puff }) {
       onClosed: () => {
         hud.hidden = true;
         hud.classList.remove('open');
-        card.hidden = true;
         html.classList.remove('focusing');
         api.active = false;
         opener?.focus({ preventScroll: true });
@@ -105,19 +97,18 @@ export function initSkills(ocean, { puff }) {
 
   function select(i) {
     zone.lightBlock(i);
-    showCard(i);
-    if (lit.has(i)) return;
+    if (lit.has(i)) { announce(i); return; }
     hint.textContent = `Le robot éclaire « ${groups[i].title} »…`;
   }
 
   addEventListener('pointermove', (e) => {
     if (!api.active || !ready || e.pointerType === 'touch') return;
-    const over = e.target.closest?.('button, .skill-card');
+    const over = e.target.closest?.('button');
     const i = over ? -1 : zone.pick(e.clientX, e.clientY);
     zone.setHover(i);
     html.classList.toggle('can-explore', i >= 0);
     if (i >= 0) {
-      tip.textContent = `${lit.has(i) ? 'Revoir' : 'Éclairer'} · ${groups[i].title}`;
+      tip.textContent = `${lit.has(i) ? 'Revoir' : 'Éclairer la pierre'} · ${groups[i].title}`;
       tip.style.left = `${e.clientX}px`;
       tip.style.top = `${e.clientY}px`;
     }
@@ -126,7 +117,7 @@ export function initSkills(ocean, { puff }) {
 
   addEventListener('click', (e) => {
     if (!api.active || !ready) return;
-    if (e.target.closest('button, .skill-card')) return;
+    if (e.target.closest('button')) return;
     const i = zone.pick(e.clientX, e.clientY);
     if (i >= 0) select(i);
     else ocean.burstAt(e.clientX, e.clientY);
