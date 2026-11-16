@@ -21,3 +21,5 @@ kelp2.glb | poly.pizza/m/3VhttTFyADO | Christopher F | CC-BY-3.0
 crab.glb | poly.pizza/m/1O5Q4pE8X6e | Poly by Google | CC-BY-3.0
 urchin.glb | poly.pizza/m/f4iwEhEP3-d | Poly by Google | CC-BY-3.0
 octopus.glb | poly.pizza/m/9-b6-yqrwEe | Poly by Google | CC-BY-3.0
+
+skill_rock_0-5.glb, temple.glb | modélisés sous Blender (script : tools/make_skill_models.py) | Thomas Le Bourdon | modèles originaux

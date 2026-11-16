@@ -22,7 +22,8 @@ portfolio/
 ├── js/app.js           # Jauge, couleur de l'eau, déclencheurs, exploration, mode lecture
 ├── js/scene.js         # Scène 3D : ROV, stations, falaises, plancher, créatures, zoom
 ├── js/skills.js        # Section Compétences : HUD, carte de compétence, éclairage des blocs
-├── js/skillszone.js    # Compétences : cinématique de plongée + grotte 3D aux six blocs
+├── js/skillszone.js    # Compétences : sprint du robot + grotte 3D (temple marin, six roches anciennes)
+├── tools/make_skill_models.py  # Génère temple.glb et skill_rock_*.glb (blender -b -P tools/make_skill_models.py -- assets/models)
 ├── js/props.js         # Décors procéduraux (rochers, éponges, anémones, objets à explorer)
 ├── js/assets.js        # Chargement et normalisation des modèles .glb
 ├── assets/models/      # Modèles 3D (voir CREDITS.txt pour les licences)

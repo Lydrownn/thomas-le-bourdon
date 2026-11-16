@@ -18,6 +18,8 @@ export function initSkills(ocean, { puff }) {
   let shown = -1;
   const lit = new Set();
   const api = { active: false, enter, exit };
+  // Précharge les modèles de la grotte quand le navigateur est au repos.
+  setTimeout(() => zone.preload(), 2500);
 
   function readGroups(section) {
     return [...section.querySelectorAll('.skill-group')].map((el) => ({

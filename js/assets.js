@@ -25,6 +25,9 @@ export async function loadModels(names = MODELS) {
 
 export const hasModel = (n) => cache.has(n);
 
+// Copie brute d'un modèle, sans normalisation d'échelle (modèles faits sur mesure, en unités de la scène).
+export const raw = (n) => cache.get(n)?.scene.clone(true) ?? null;
+
 // Renvoie une copie du modèle dont la plus grande dimension vaut `size`.
 // anchor 'base' : posé sur y = 0 ; 'center' : centré sur l'origine.
 // fix 'fish' : les poissons Quaternius regardent +z, on les tourne vers +x.

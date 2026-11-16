@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import * as P from './props.js';
+import { loadModels, hasModel, raw } from './assets.js';
 
 const { rand } = P;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -19,7 +20,8 @@ const T_SWAP = 2.4;   // le voile est opaque : on change de décor
 const T_READY = 3.8;  // fin de la cinématique d'entrée
 const T_BACK = 1.5;   // sortie : même principe, en plus court
 const T_BACK_END = 2.8;
-const CRY_Y = 4.0;    // hauteur de la petite pierre au-dessus du pied du piédestal
+const CRY_Y = 4.0;    // hauteur par défaut de la petite pierre (piédestal procédural de secours)
+const SKILL_MODELS = ['temple', ...Array.from({ length: 6 }, (_, i) => `skill_rock_${i}`)];
 const DEFAULT_COLORS = [0x5ee7ff, 0xb48aff, 0x7affb0, 0xffc233, 0xff7ab0, 0xff8a3d];
 
 function glyphTexture(label, color) {
@@ -134,6 +136,19 @@ export class SkillsZone {
     ocean.scene.add(this.veil);
 
     this.buildStream();
+  }
+
+  // Les modèles Blender (temple, roches) sont chargés en différé : ils pèsent ~1,3 Mo.
+  preload() {
+    this.loading ??= loadModels(SKILL_MODELS).finally(() => { this.modelsSettled = true; });
+    return this.loading;
+  }
+
+  ensureBuilt() {
+    if (!this.modelsSettled || !this.groups.length) return false;
+    if (!this.built) { this.buildScene(); this.built = true; }
+    if (this.blocks.length !== this.groups.length) this.buildBlocks(this.groups);
+    return true;
   }
 
   // ─── Vitesse : les bulles sortent du robot et restent derrière lui ───────
@@ -270,11 +285,13 @@ export class SkillsZone {
       for (let i = 0; i < 6; i++) {
         const s = rand(2.5, 6);
         const r = P.rock(0x1d2a4c, { sx: s, sy: s * rand(0.9, 1.7), sz: s * 0.8 });
-        const x = side * rand(15, 30), z = rand(-26, -2);
+        const x = side * rand(24, 38), z = rand(-26, -2);
         r.position.set(x, this.floorH(x, z) + s * 0.4, z);
         g.add(r);
       }
     }
+
+    this.buildTemple();
 
     // Flore lumineuse
     this.glowers = [];
@@ -313,6 +330,36 @@ export class SkillsZone {
     );
     this.cardBeam.visible = false;
     g.add(this.cardBeam);
+  }
+
+  // Temple marin en ruine (modèle Blender) au fond de la grotte, avec son portail lumineux.
+  buildTemple() {
+    const t = raw('temple');
+    if (!t) return;
+    this.templeFx = [];
+    t.traverse((m) => {
+      if (!m.isMesh) return;
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      m.material = mats.map((mt) => {
+        const n = mt.clone();
+        if (n.name === 'Rune') { n.emissive = new THREE.Color(0x2fd5ff); n.emissiveIntensity = 0.5; n.color.set(0x14203a); this.templeFx.push(n); }
+        if (n.name === 'Glow') return new THREE.MeshBasicMaterial({ color: 0x6fe6ff, fog: false });
+        if (n.name === 'Portal') {
+          this.portal = new THREE.MeshBasicMaterial({ color: 0x3fb8ff, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+          return this.portal;
+        }
+        return n;
+      });
+      if (m.material.length === 1) m.material = m.material[0];
+    });
+    t.scale.setScalar(0.9);
+    t.position.set(0, -3.1, -13);
+    this.group.add(t);
+    for (const [x, y, z, i] of [[0, 5.5, -22, 26], [-3.6, -0.2, -11.4, 9], [3.6, -0.2, -11.4, 9]]) {
+      const l = new THREE.PointLight(0x4fe0ff, i, 28, 1.4);
+      l.position.set(x, y, z);
+      this.group.add(l);
+    }
   }
 
   // ─── Les six piédestaux ───────────────────────────────────────────────────
@@ -358,8 +405,42 @@ export class SkillsZone {
       body.userData.block = i;
       g.add(slab, body, glyph, crystal, halo, lamp, hit);
       this.hitboxes.push(hit, body);
+      let gy = CRY_Y;
+      const runes = [];
+      const model = hasModel(`skill_rock_${i}`) ? raw(`skill_rock_${i}`) : null;
+      if (model) {
+        // Roche ancienne modélisée sous Blender : elle remplace la dalle et le bloc.
+        g.remove(slab, body);
+        this.hitboxes.pop();
+        g.add(model);
+        model.traverse((m) => {
+          if (!m.isMesh) return;
+          const mats = Array.isArray(m.material) ? m.material : [m.material];
+          m.material = mats.map((mt) => {
+            const n = mt.clone();
+            if (n.name === 'Rune') { n.emissive = color.clone(); n.emissiveIntensity = 0.12; n.color.set(0x14203a); runes.push(n); }
+            return n;
+          });
+          if (m.material.length === 1) m.material = m.material[0];
+        });
+        const gem = model.getObjectByName('Gem').position, tab = model.getObjectByName('Tablet').position;
+        gy = gem.y;
+        crystal.position.set(gem.x, gy, gem.z);
+        halo.position.set(gem.x, gy, gem.z + 0.3);
+        lamp.position.set(gem.x, gy + 0.4, gem.z + 1.6);
+        hit.position.set(gem.x, gy, gem.z);
+        glyph.geometry = new THREE.PlaneGeometry(0.85, 0.85);
+        glyph.position.set(tab.x, tab.y, tab.z + 0.01);
+        glyph.material.opacity = 0.4;
+        const box = new THREE.Box3().setFromObject(model), sz = box.getSize(V(0, 0, 0)), c = box.getCenter(V(0, 0, 0));
+        const bb = new THREE.Mesh(new THREE.BoxGeometry(sz.x, sz.y, sz.z), hitMat);
+        bb.position.copy(c);
+        bb.userData.block = i;
+        g.add(bb);
+        this.hitboxes.push(bb);
+      }
       this.group.add(g);
-      this.blocks.push({ group: g, crystal, crystalMat, halo, lamp, color, css, k: 0, lit: false, hov: 0, ph: rand(0, 6.28), size: 1 });
+      this.blocks.push({ group: g, crystal, crystalMat, halo, lamp, runes, gy, color, css, k: 0, lit: false, hov: 0, ph: rand(0, 6.28), size: 1 });
     });
     this.layout();
   }
@@ -384,7 +465,8 @@ export class SkillsZone {
       b.group.position.set(x, y0, z);
       b.group.scale.setScalar(s);
       b.size = s;
-      b.gem = V(x, y0 + CRY_Y * s, z); // position de la petite pierre
+      b.group.rotation.y = hasModel(`skill_rock_${i}`) ? [0.1, -0.12, 0.06, -0.05, 0.14, -0.1][i % 6] : 0;
+      b.gem = V(x, y0 + b.gy * s, z); // position de la petite pierre
     });
   }
 
@@ -393,9 +475,9 @@ export class SkillsZone {
     if (this.active) return;
     const o = this.o;
     this.cb = cb;
-    if (!this.built) { this.buildScene(); this.built = true; }
     this.groups = groups;
-    if (this.blocks.length !== groups.length) this.buildBlocks(groups);
+    this.preload();
+    this.ensureBuilt();
     this.blocks.forEach((b) => { b.lit = false; b.k = 0; });
     this.layout();
     this.hideCard(true);
@@ -471,6 +553,7 @@ export class SkillsZone {
       o.rovFocus = o.focusPoint = null;
       o.rovSpeed = null;
       o.rov.position.set(o.halfW * (o.narrow ? 0.55 : 0.72), o.halfH * 0.5, 2);
+      o.rovHeading = -Math.PI / 2 - 0.88 * (o.narrow ? 1 : o.rovSide); // cap habituel, sans demi-tour visible
       this.lastRov.copy(o.rov.position);
     }
   }
@@ -574,7 +657,10 @@ export class SkillsZone {
         veil = smooth(0, 0.9, T);
         this.veil.material.color.copy(FOAM).lerp(new THREE.Color(SKILLS_BG), smooth(0.9, T_SWAP, T));
         if (T >= 1.1 && !this.worldHidden) this.hideWorld();
-        if (T >= T_SWAP) this.swap(true);
+        if (T >= T_SWAP) {
+          // Si les modèles ne sont pas encore là, on garde la course au même rythme et on attend.
+          if (this.ensureBuilt()) { this.layout(); this.swap(true); } else this.T = T_SWAP - 0.01;
+        }
       } else {
         veil = 1 - smooth(T_SWAP, T_SWAP + 0.9, T);
       }
@@ -657,7 +743,7 @@ export class SkillsZone {
         const target = V(THREE.MathUtils.clamp(this.hit.x, -o.halfW * 0.9, o.halfW * 0.9), THREE.MathUtils.clamp(this.hit.y, -0.5, 7), 3);
         if (Math.abs(target.x - o.rov.position.x) > 1.2) this.face = Math.sign(target.x - o.rov.position.x);
         o.rovFocus = target;
-        o.focusPoint = target.clone().add(V(this.face * 5, -0.8, 0));
+        o.focusPoint = target.clone().add(V(this.face * 3, -0.6, -4.5)); // reste de trois quarts, face à la grotte
       }
     }
   }
@@ -681,9 +767,12 @@ export class SkillsZone {
       b.halo.material.opacity = (1 - b.k) * (0.1 + 0.05 * Math.sin(t * 2 + b.ph)) + b.k * (0.6 + pulse * 0.3) + b.hov * 0.15;
       b.halo.scale.setScalar(5 + b.k * 2);
       b.lamp.intensity = b.k * (24 + pulse * 18);
-      b.crystal.position.y = CRY_Y + Math.sin(t * 1.4 + b.ph) * 0.14 * (0.4 + b.k);
+      b.crystal.position.y = b.gy + Math.sin(t * 1.4 + b.ph) * 0.14 * (0.4 + b.k);
+      for (const r of b.runes) r.emissiveIntensity = 0.12 + b.k * 0.55 + pulse * 0.3;
       b.crystal.rotation.y += dt * (0.5 + b.k * 1.8);
     });
+    for (const m of this.templeFx ?? []) m.emissiveIntensity = 0.5 + 0.2 * Math.sin(t * 1.1);
+    if (this.portal) this.portal.opacity = 0.28 + 0.1 * Math.sin(t * 0.9);
     if (this.celebrate >= 0) this.celebrate += dt;
   }
 }
